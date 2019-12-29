@@ -1,0 +1,1971 @@
+
+<html>
+
+<head>
+    <title>Learning WebGL &mdash; lesson 3</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css"
+          integrity="sha384-9gVQ4dYFwwWSjIDZnLEWnxCjeSWFphJiwGPXr1jddIhOegiu1FwO5qRGvFXOdJZ4" crossorigin="anonymous">
+    <style>
+        .footer {
+            position: fixed;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            background-color: #0c5460;
+            color: white;
+            text-align: center;
+            height: 60px;
+        }
+    </style>
+    <script type="text/javascript" src="glMatrix-0.9.5.min.js"></script>
+    <script type="text/javascript" src="../lib/webgl-utils.js"></script>
+
+    <script id="shader-fs" type="x-shader/x-fragment">
+    #ifdef GL_ES
+    precision highp float;
+    #endif
+
+    varying vec4 vColor;
+
+    void main(void) {
+        gl_FragColor = vColor;
+    }
+
+    </script>
+
+    <script id="shader-vs" type="x-shader/x-vertex">
+    attribute vec3 aVertexPosition;
+    attribute vec4 aVertexColor;
+
+    uniform mat4 uMVMatrix;
+    uniform mat4 uPMatrix;
+
+    varying vec4 vColor;
+
+    void main(void) {
+        gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+        vColor = aVertexColor;
+    }
+
+    </script>
+
+
+    <script type="text/javascript">
+
+        var gl;
+
+        function initGL(canvas) {
+            try {
+                gl = canvas.getContext("experimental-webgl");
+                gl.viewportWidth = canvas.width;
+                gl.viewportHeight = canvas.height;
+            } catch (e) {
+            }
+            if (!gl) {
+                alert("Could not initialise WebGL, sorry :-(");
+            }
+        }
+
+
+        function getShader(gl, id) {
+            var shaderScript = document.getElementById(id);
+            if (!shaderScript) {
+                return null;
+            }
+
+            var str = "";
+            var k = shaderScript.firstChild;
+            while (k) {
+                if (k.nodeType == 3) {
+                    str += k.textContent;
+                }
+                k = k.nextSibling;
+            }
+
+            var shader;
+            if (shaderScript.type == "x-shader/x-fragment") {
+                shader = gl.createShader(gl.FRAGMENT_SHADER);
+            } else if (shaderScript.type == "x-shader/x-vertex") {
+                shader = gl.createShader(gl.VERTEX_SHADER);
+            } else {
+                return null;
+            }
+
+            gl.shaderSource(shader, str);
+            gl.compileShader(shader);
+
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                alert(gl.getShaderInfoLog(shader));
+                return null;
+            }
+
+            return shader;
+        }
+
+
+        var shaderProgram;
+
+        function initShaders() {
+            var fragmentShader = getShader(gl, "shader-fs");
+            var vertexShader = getShader(gl, "shader-vs");
+
+            shaderProgram = gl.createProgram();
+            gl.attachShader(shaderProgram, vertexShader);
+            gl.attachShader(shaderProgram, fragmentShader);
+            gl.linkProgram(shaderProgram);
+
+            if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+                alert("Could not initialise shaders");
+            }
+
+            gl.useProgram(shaderProgram);
+
+            shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
+            gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
+
+            shaderProgram.vertexColorAttribute = gl.getAttribLocation(shaderProgram, "aVertexColor");
+            gl.enableVertexAttribArray(shaderProgram.vertexColorAttribute);
+
+            shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
+            shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
+        }
+
+
+        var mvMatrix = mat4.create();
+        var mvMatrixStack = [];
+        var pMatrix = mat4.create();
+
+        function mvPushMatrix() {
+            var copy = mat4.create();
+            mat4.set(mvMatrix, copy);
+            mvMatrixStack.push(copy);
+        }
+
+        function mvPopMatrix() {
+            if (mvMatrixStack.length == 0) {
+                throw "Invalid popMatrix!";
+            }
+            mvMatrix = mvMatrixStack.pop();
+        }
+
+
+        function setMatrixUniforms() {
+            gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
+            gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
+        }
+
+
+        function degToRad(degrees) {
+            return degrees * Math.PI / 180;
+        }
+
+        var triangleVertexPositionBuffer;
+        var triangleVertexColorBuffer;
+        var leftLineVertexPositionBuffer;
+        var leftlineVertexColorBuffer;
+        var rightlineVertexPositionBuffer;
+        var rightlineVertexColorBuffer;
+        var lefthandVertexPositionBuffer;
+        var lefthandVertexColorBuffer;
+        var righthandVertexPositionBuffer;
+        var righthandVertexColorBuffer;
+        var halfrighthandVertexPositionBuffer;
+        var halfrighthandVertexColorBuffer;
+        var topVertexPositionBuffer;
+        var topVertexColorBuffer;
+        var headVertexPositionBuffer;
+        var headVertexColorBuffer;
+        var legleftVertexPositionBuffer;
+        var legleftVertexColorBuffer;
+        var legrightVertexPositionBuffer;
+        var legrightVertexColorBuffer;
+        var bagstrap1VertexPositionBuffer;
+        var bagstrap1VertexColorBuffer;
+        var bagstrap2VertexPositionBuffer;
+        var bagstrap2VertexColorBuffer;
+        var lidVertexPositionBuffer;
+        var lidVertexColorBuffer;
+        var leftearVertexPositionBuffer;
+        var leftearVertexColorBuffer;
+        var rightearVertexPositionBuffer;
+        var rightearVertexColorBuffer;
+        var shoe1VertexPositionBuffer;
+        var shoe1VertexColorBuffer;
+        var shoe2VertexPositionBuffer;
+        var shoe2VertexColorBuffer;
+        var heartVertexPositionBuffer;
+        var heartVertexColorBuffer;
+        var bodyVertexPositionBuffer;
+        var bodyVertexColorBuffer;
+        var leftfootVertexPositionBuffer;
+        var leftfootVertexColorBuffer;
+        var rightfootVertexPositionBuffer;
+        var rightfootVertexColorBuffer;
+        var leftarmVertexPositionBuffer;
+        var leftarmVertexColorBuffer;
+        var rightarmVertexPositionBuffer;
+        var rightarmVertexColorBuffer;
+        var rightsupportVertexPositionBuffer;
+        var rightsupportVertexColorBuffer;
+        var leftsupportVertexPositionBuffer;
+        var leftsupportVertexColorBuffer;
+        var shoe3VertexPositionBuffer;
+        var shoe3VertexColorBuffer;
+        var shoe4VertexPositionBuffer;
+        var shoe4VertexColorBuffer;
+        var noseVertexPositionBuffer;
+        var noseVertexColorBuffer;
+        var hair1VertexPositionBuffer;
+        var hair1VertexColorBuffer;
+        var hair2VertexPositionBuffer;
+        var hair2VertexColorBuffer;
+        var hair3VertexPositionBuffer;
+        var hair3VertexColorBuffer;
+        var hair4VertexPositionBuffer;
+        var hair4VertexColorBuffer;
+        var lefteye1VertexPositionBuffer;
+        var lefteye1VertexColorBuffer;
+        var righteye1VertexPositionBuffer;
+        var righteye1VertexColorBuffer;
+        var eye2VertexPositionBuffer;
+        var eye2VertexColorBuffer;
+        var eye3VertexPositionBuffer;
+        var eye3VertexColorBuffer;
+        var eye4VertexPositionBuffer;
+        var eye4VertexColorBuffer;
+        var eye5VertexPositionBuffer;
+        var eye5VertexColorBuffer;
+        var lip1VertexPositionBuffer;
+        var lip1VertexColorBuffer;
+        var lip2VertexPositionBuffer;
+        var lip2VertexColorBuffer;
+        var nose2VertexPositionBuffer;
+        var nose2VertexColorBuffer;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        function initBuffers() {
+            triangleVertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
+            var vertices = [
+                0.0, 1.0, 0.0,
+                -1.0, -1.0, 0.0,
+                1.0, -1.0, 0.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            triangleVertexPositionBuffer.itemSize = 3;
+            triangleVertexPositionBuffer.numItems = 3;
+
+            triangleVertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexColorBuffer);
+            var colors = [
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 1.0, 0.0, 1.0,
+                0.0, 1.0, 1.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            triangleVertexColorBuffer.itemSize = 4;
+            triangleVertexColorBuffer.numItems = 3;
+
+            leftLineVertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, leftLineVertexPositionBuffer);
+            var vertices = [
+                0.0, -1.0, 0.0,
+               -0.39, -1.82, 0.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            leftLineVertexPositionBuffer.itemSize = 3;
+            leftLineVertexPositionBuffer.numItems = 2;
+
+            leftlineVertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, leftlineVertexColorBuffer);
+            var color = [
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            leftlineVertexColorBuffer.itemSize = 4;
+            leftlineVertexColorBuffer.numItems = 2;
+
+            rightlineVertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, rightlineVertexPositionBuffer);
+            var vertices = [
+                0.0, -1.0, 0.0,
+                0.39, -1.82, 0.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            rightlineVertexPositionBuffer.itemSize = 3;
+            rightlineVertexPositionBuffer.numItems = 2;
+
+            rightlineVertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, rightlineVertexColorBuffer);
+            var color = [
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            rightlineVertexColorBuffer.itemSize = 4;
+            rightlineVertexColorBuffer.numItems = 2;
+
+            lefthandVertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, lefthandVertexPositionBuffer);
+            var vertices = [
+                -0.5, 0.0, 0.0,
+                -1.5, 1.0, 0.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            lefthandVertexPositionBuffer.itemSize = 3;
+            lefthandVertexPositionBuffer.numItems = 2;
+
+            lefthandVertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, lefthandVertexColorBuffer);
+            var color = [
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            lefthandVertexColorBuffer.itemSize = 4;
+            lefthandVertexColorBuffer.numItems = 2;
+
+            righthandVertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, righthandVertexPositionBuffer);
+            var vertices = [
+                0.5, 0.0, 0.0,
+                1.0, 0.5, 0.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            righthandVertexPositionBuffer.itemSize = 3;
+            righthandVertexPositionBuffer.numItems = 2;
+
+            righthandVertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, righthandVertexColorBuffer);
+            var color = [
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            righthandVertexColorBuffer.itemSize = 4;
+            righthandVertexColorBuffer.numItems = 2;
+
+            halfrighthandVertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, halfrighthandVertexPositionBuffer);
+            var vertices = [
+                1.0, 0.5, 0.0,
+                1.5, 0.0, 0.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            halfrighthandVertexPositionBuffer.itemSize = 3;
+            halfrighthandVertexPositionBuffer.numItems = 2;
+
+            halfrighthandVertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, halfrighthandVertexColorBuffer);
+            var color = [
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            halfrighthandVertexColorBuffer.itemSize = 4;
+            halfrighthandVertexColorBuffer.numItems = 2;
+
+            topVertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, topVertexPositionBuffer);
+            var vertices = [
+                0.5, 0.5, 0.0,
+                -0.5, 0.5, 0.0,
+                0.5, -0.5, 0.0,
+                -0.5, -0.5, 0.0,
+
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            topVertexPositionBuffer.itemSize = 3;
+            topVertexPositionBuffer.numItems = 4;
+
+            topVertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, topVertexColorBuffer);
+            var colors = [
+                185/185, 122/185, 87/185, 1.0,
+                96/122, 122/122, 14/12, 1.0,
+                240/240, 96/240, 0/240, 1.0,
+                34/65, 24/65, 65/65, 1.0,
+                ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            topVertexColorBuffer.itemSize = 4;
+            topVertexColorBuffer.numItems = 4;
+
+            bagstrap1VertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, bagstrap1VertexPositionBuffer);
+            var vertices = [
+                1.5, 0.0, 0.0,
+                1.3, -0.5, 0.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            bagstrap1VertexPositionBuffer.itemSize = 3;
+            bagstrap1VertexPositionBuffer.numItems = 2;
+
+            bagstrap1VertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, bagstrap1VertexColorBuffer);
+            var color = [
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            bagstrap1VertexColorBuffer.itemSize = 4;
+            bagstrap1VertexColorBuffer.numItems = 2;
+
+             lidVertexPositionBuffer= gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, lidVertexPositionBuffer);
+            var vertices = [
+                0.5, 0.5, 0.0,
+                -0.5, 0.5, 0.0,
+                0.5, -0.5, 0.0,
+                -0.5, -0.5, 0.0,
+
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            lidVertexPositionBuffer.itemSize = 3;
+            lidVertexPositionBuffer.numItems = 4;
+
+            lidVertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, lidVertexColorBuffer);
+            var colors = [
+                1.0, 1.0, 0.0, 1.0,
+                1.0, 0.0, 1.0, 1.0,
+                0.0, 1.0, 1.0, 1.0,
+                1.0, 1.0, 1.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            lidVertexColorBuffer.itemSize = 4;
+            lidVertexColorBuffer.numItems = 4;
+
+            leftearVertexPositionBuffer= gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, leftearVertexPositionBuffer);
+            var vertices = [
+                0.17, 0.17, 0.0,
+                -0.17, 0.17, 0.0,
+                0.17, -0.17, 0.0,
+                -0.17, -0.17, 0.0,
+
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            leftearVertexPositionBuffer.itemSize = 3;
+            leftearVertexPositionBuffer.numItems = 4;
+
+            leftearVertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, leftearVertexColorBuffer);
+            var colors = [
+                1.0, 0.0, 1.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+                0.0, 1.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            leftearVertexColorBuffer.itemSize = 4;
+            leftearVertexColorBuffer.numItems = 4;
+
+            rightearVertexPositionBuffer= gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, rightearVertexPositionBuffer);
+            var vertices = [
+                0.17, 0.17, 0.0,
+                -0.17, 0.17, 0.0,
+                0.17, -0.17, 0.0,
+                -0.17, -0.17, 0.0,
+
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            rightearVertexPositionBuffer.itemSize = 3;
+            rightearVertexPositionBuffer.numItems = 4;
+
+            rightearVertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, rightearVertexColorBuffer);
+            var colors = [
+                1.0, 0.0, 0.0, 1.0,
+                0.0, 1.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 1.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            rightearVertexColorBuffer.itemSize = 4;
+            rightearVertexColorBuffer.numItems = 4;
+
+
+            bagstrap2VertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, bagstrap2VertexPositionBuffer);
+            var vertices = [
+                1.0, 0.0, 0.0,
+                1.5, -1.0, 0.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            bagstrap2VertexPositionBuffer.itemSize = 3;
+            bagstrap2VertexPositionBuffer.numItems = 2;
+
+            bagstrap2VertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, bagstrap2VertexColorBuffer);
+            var color = [
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            bagstrap2VertexColorBuffer.itemSize = 4;
+            bagstrap2VertexColorBuffer.numItems = 2;
+
+
+
+            headVertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, headVertexPositionBuffer);
+            var vertices = [
+                0.7, 0.0, 0.0,
+                -0.7, 0.0, 0.0,
+                0.0, -1.3, 0.0,
+
+
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            headVertexPositionBuffer.itemSize = 3;
+            headVertexPositionBuffer.numItems = 3;
+
+            headVertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, headVertexColorBuffer);
+            var colors = [
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 1.0, 0.0, 1.0,
+                1.0, 1.0, 1.0, 1.0,
+
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            headVertexColorBuffer.itemSize = 4;
+            headVertexColorBuffer.numItems = 3;
+
+            legleftVertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, legleftVertexPositionBuffer);
+            var vertices = [
+                0.0, 0.2, 0.0,
+                -0.2, -0.2, 0.0,
+                0.4, -0.2, 0.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            legleftVertexPositionBuffer.itemSize = 3;
+            legleftVertexPositionBuffer.numItems = 3;
+
+            legleftVertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, legleftVertexColorBuffer);
+            var colors = [
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 1.0, 0.0, 1.0,
+                0.0, 1.0, 1.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            legleftVertexColorBuffer.itemSize = 4;
+            legleftVertexColorBuffer.numItems = 3;
+
+            legrightVertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, legrightVertexPositionBuffer);
+            var vertices = [
+                0.0, 0.2, 0.0,
+                -0.2, -0.2, 0.0,
+                0.4, -0.2, 0.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            legrightVertexPositionBuffer.itemSize = 3;
+            legrightVertexPositionBuffer.numItems = 3;
+
+            legrightVertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, legrightVertexColorBuffer);
+            var colors = [
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 1.0, 0.0, 1.0,
+                0.0, 1.0, 1.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            legrightVertexColorBuffer.itemSize = 4;
+            legrightVertexColorBuffer.numItems = 3;
+
+            shoe1VertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, shoe1VertexPositionBuffer);
+            var vertices = [
+                0.17, 0.0, 0.0,
+                -0.17, 0.0, 0.0,
+                0.0, -0.17, 0.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            shoe1VertexPositionBuffer.itemSize = 3;
+            shoe1VertexPositionBuffer.numItems = 3;
+
+            shoe1VertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, shoe1VertexColorBuffer);
+            var colors = [
+                1.0, 0.0, 0.0, 1.0,
+                0.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            shoe1VertexColorBuffer.itemSize = 4;
+            shoe1VertexColorBuffer.numItems = 3;
+
+            shoe2VertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, shoe2VertexPositionBuffer);
+            var vertices = [
+                0.17, 0.0, 0.0,
+                -0.17, 0.0, 0.0,
+                0.0, -0.17, 0.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            shoe2VertexPositionBuffer.itemSize = 3;
+            shoe2VertexPositionBuffer.numItems = 3;
+
+            shoe2VertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, shoe2VertexColorBuffer);
+            var colors = [
+                1.0, 0.0, 0.0, 1.0,
+                0.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            shoe2VertexColorBuffer.itemSize = 4;
+            shoe2VertexColorBuffer.numItems = 3;
+
+            heartVertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, heartVertexPositionBuffer);
+            var vertices = [
+                1.0, 0.0, 0.0,
+                1.3, 0.7, 0.0,
+                0.6, 1.3, 0.0,
+                0.0, 1.0, 0.0,
+                -0.6, 1.3, 0.0,
+                -1.3, 0.7, 0.0,
+                -1.0, 0.0, 0.0,
+                -0.3, -0.5, 0.0,
+                0.0, -0.7, 0.0,
+                0.3, -0.5, 0.0,
+
+
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            heartVertexPositionBuffer.itemSize = 3;
+            heartVertexPositionBuffer.numItems = 10;
+
+            heartVertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, heartVertexColorBuffer);
+            var colors = [
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            heartVertexColorBuffer.itemSize = 4;
+            heartVertexColorBuffer.numItems = 10;
+
+            bodyVertexPositionBuffer= gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, bodyVertexPositionBuffer);
+            var vertices = [
+                0.8, 0.8, 0.0,
+                -0.8, 0.8, 0.0,
+                0.8, -0.8, 0.0,
+                -0.8, -0.8, 0.0,
+
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            bodyVertexPositionBuffer.itemSize = 3;
+            bodyVertexPositionBuffer.numItems = 4;
+
+            bodyVertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, bodyVertexColorBuffer);
+            var colors = [
+                1.0, 1.0, 0.0, 1.0,
+                1.0, 0.0, 1.0, 1.0,
+                0.0, 1.0, 1.0, 1.0,
+                1.0, 1.0, 1.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            bodyVertexColorBuffer.itemSize = 4;
+            bodyVertexColorBuffer.numItems = 4;
+
+            leftfootVertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, leftfootVertexPositionBuffer);
+            var vertices = [
+                2.0, 1.0, 0.0,
+                1.5, -0.2, 0.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            leftfootVertexPositionBuffer.itemSize = 3;
+            leftfootVertexPositionBuffer.numItems = 2;
+
+            leftfootVertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, leftfootVertexColorBuffer);
+            var color = [
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            leftfootVertexColorBuffer.itemSize = 4;
+            leftfootVertexColorBuffer.numItems = 2;
+
+            rightfootVertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, rightfootVertexPositionBuffer);
+            var vertices = [
+                0.5, 0.0, 0.0,
+                1.0, -1.2, 0.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            rightfootVertexPositionBuffer.itemSize = 3;
+            rightfootVertexPositionBuffer.numItems = 2;
+
+            rightfootVertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, rightfootVertexColorBuffer);
+            var color = [
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            rightfootVertexColorBuffer.itemSize = 4;
+            rightfootVertexColorBuffer.numItems = 2;
+
+            leftarmVertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, leftarmVertexPositionBuffer);
+            var vertices = [
+                0.0, 0.0, 0.0,
+                1.5, 1.0, 0.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            leftarmVertexPositionBuffer.itemSize = 3;
+            leftarmVertexPositionBuffer.numItems = 2;
+
+            leftarmVertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, leftarmVertexColorBuffer);
+            var color = [
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            leftarmVertexColorBuffer.itemSize = 4;
+            leftarmVertexColorBuffer.numItems = 2;
+
+            rightarmVertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, rightarmVertexPositionBuffer);
+            var vertices = [
+                0.0, 0.0, 0.0,
+                1.5, 1.0, 0.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            rightarmVertexPositionBuffer.itemSize = 3;
+            rightarmVertexPositionBuffer.numItems = 2;
+
+            rightarmVertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, rightarmVertexColorBuffer);
+            var color = [
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            rightarmVertexColorBuffer.itemSize = 4;
+            rightarmVertexColorBuffer.numItems = 2;
+
+            rightsupportVertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, rightsupportVertexPositionBuffer);
+            var vertices = [
+                0.2, 0.1, 0.0,
+                -0.2, 0.1, 0.0,
+                0.2, -0.1, 0.0,
+                -0.2, -0.1, 0.0,
+
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            rightsupportVertexPositionBuffer.itemSize = 3;
+            rightsupportVertexPositionBuffer.numItems = 4;
+
+            rightsupportVertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, rightsupportVertexColorBuffer);
+            var colors = [
+                185/185, 122/185, 87/185, 1.0,
+                96/122, 122/122, 14/12, 1.0,
+                240/240, 96/240, 0/240, 1.0,
+                34/65, 24/65, 65/65, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            rightsupportVertexColorBuffer.itemSize = 4;
+            rightsupportVertexColorBuffer.numItems = 4;
+
+            leftsupportVertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, leftsupportVertexPositionBuffer);
+            var vertices = [
+                0.2, 0.1, 0.0,
+                -0.2, 0.1, 0.0,
+                0.2, -0.1, 0.0,
+                -0.2, -0.1, 0.0,
+
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            leftsupportVertexPositionBuffer.itemSize = 3;
+            leftsupportVertexPositionBuffer.numItems = 4;
+
+            leftsupportVertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, leftsupportVertexColorBuffer);
+            var colors = [
+                185/185, 122/185, 87/185, 1.0,
+                96/122, 122/122, 14/12, 1.0,
+                240/240, 96/240, 0/240, 1.0,
+                34/65, 24/65, 65/65, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            leftsupportVertexColorBuffer.itemSize = 4;
+            leftsupportVertexColorBuffer.numItems = 4;
+
+            noseVertexPositionBuffer= gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, noseVertexPositionBuffer);
+            var vertices = [
+                0.4, 0.0, 0.0,
+                -0.1, 0.3, 0.0,
+                -0.1, -0.3  , 0.0,
+
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            noseVertexPositionBuffer.itemSize = 3;
+            noseVertexPositionBuffer.numItems = 3;
+
+            noseVertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, noseVertexColorBuffer);
+            var colors = [
+                1.0, 0.0, 1.0, 1.0,
+                1.0, 0.0, 1.0, 1.0,
+                1.0, 0.0, 1.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            noseVertexColorBuffer.itemSize = 4;
+            noseVertexColorBuffer.numItems = 3;
+
+            hair1VertexPositionBuffer= gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, hair1VertexPositionBuffer);
+            var vertices = [
+                -0.5, -0.3, 0.0,
+                -0.1, 0.3, 0.0,
+
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            hair1VertexPositionBuffer.itemSize = 3;
+            hair1VertexPositionBuffer.numItems = 2;
+
+            hair1VertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, hair1VertexColorBuffer);
+            var colors = [
+                1.0, 0.0, 1.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            hair1VertexColorBuffer.itemSize = 4;
+            hair1VertexColorBuffer.numItems = 2;
+
+            shoe3VertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, shoe3VertexPositionBuffer);
+            var vertices = [
+                0.1, 0.1, 0.0,
+                -0.1, 0.1, 0.0,
+                0.1, -0.1, 0.0,
+                -0.1, -0.1, 0.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            shoe3VertexPositionBuffer.itemSize = 3;
+            shoe3VertexPositionBuffer.numItems = 4;
+
+            shoe3VertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, shoe3VertexColorBuffer);
+            var colors = [
+                185/185, 122/185, 87/185, 1.0,
+                96/122, 122/122, 14/12, 1.0,
+                240/240, 96/240, 0/240, 1.0,
+                34/65, 24/65, 65/65, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            shoe3VertexColorBuffer.itemSize = 4;
+            shoe3VertexColorBuffer.numItems = 4;
+
+            shoe4VertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, shoe4VertexPositionBuffer);
+            var vertices = [
+                0.1, 0.1, 0.0,
+                -0.1, 0.1, 0.0,
+                0.1, -0.1, 0.0,
+                -0.1, -0.1, 0.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            shoe4VertexPositionBuffer.itemSize = 3;
+            shoe4VertexPositionBuffer.numItems = 4;
+
+            shoe4VertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, shoe4VertexColorBuffer);
+            var colors = [
+                185/185, 122/185, 87/185, 1.0,
+                96/122, 122/122, 14/12, 1.0,
+                240/240, 96/240, 0/240, 1.0,
+                34/65, 24/65, 65/65, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            shoe4VertexColorBuffer.itemSize = 4;
+            shoe4VertexColorBuffer.numItems = 4;
+
+            hair2VertexPositionBuffer= gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, hair2VertexPositionBuffer);
+            var vertices = [
+                -0.5, -0.3, 0.0,
+                -0.1, 0.3, 0.0,
+
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            hair2VertexPositionBuffer.itemSize = 3;
+            hair2VertexPositionBuffer.numItems = 2;
+
+            hair2VertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, hair2VertexColorBuffer);
+            var colors = [
+                1.0, 0.0, 1.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            hair2VertexColorBuffer.itemSize = 4;
+            hair2VertexColorBuffer.numItems = 2;
+
+            hair3VertexPositionBuffer= gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, hair3VertexPositionBuffer);
+            var vertices = [
+                -0.5, -0.3, 0.0,
+                -0.1, 0.3, 0.0,
+
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            hair3VertexPositionBuffer.itemSize = 3;
+            hair3VertexPositionBuffer.numItems = 2;
+
+            hair3VertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, hair3VertexColorBuffer);
+            var colors = [
+                1.0, 0.0, 1.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            hair3VertexColorBuffer.itemSize = 4;
+            hair3VertexColorBuffer.numItems = 2;
+
+            hair4VertexPositionBuffer= gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, hair4VertexPositionBuffer);
+            var vertices = [
+                -0.5, -0.3, 0.0,
+                -0.1, 0.3, 0.0,
+
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            hair4VertexPositionBuffer.itemSize = 3;
+            hair4VertexPositionBuffer.numItems = 2;
+
+            hair4VertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, hair4VertexColorBuffer);
+            var colors = [
+                1.0, 0.0, 1.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            hair4VertexColorBuffer.itemSize = 4;
+            hair4VertexColorBuffer.numItems = 2;
+
+            lefteye1VertexPositionBuffer= gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, lefteye1VertexPositionBuffer);
+            var vertices = [
+                0.1, 0.1, 0.02,
+                -0.1, 0.1, 0.02,
+                0.1, -0.1, 0.02,
+                -0.1, -0.1, 0.02,
+
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            lefteye1VertexPositionBuffer.itemSize = 3;
+            lefteye1VertexPositionBuffer.numItems = 4;
+
+            lefteye1VertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, lefteye1VertexColorBuffer);
+            var colors = [
+                0.5, 0.5, 0.5, 1.0,
+                0.5, 0.5, 0.5, 1.0,
+                0.5, 0.5, 0.5, 1.0,
+                0.5, 0.5, 0.5, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            lefteye1VertexColorBuffer.itemSize = 4;
+            lefteye1VertexColorBuffer.numItems = 4;
+
+            righteye1VertexPositionBuffer= gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, righteye1VertexPositionBuffer);
+            var vertices = [
+                0.1, 0.1, 0.02,
+                -0.1, 0.1, 0.02,
+                0.1, -0.1, 0.02,
+                -0.1, -0.1, 0.02,
+
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            righteye1VertexPositionBuffer.itemSize = 3;
+            righteye1VertexPositionBuffer.numItems = 4;
+
+            righteye1VertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, righteye1VertexColorBuffer);
+            var colors = [
+                0.5, 0.5, 0.5, 1.0,
+                0.5, 0.5, 0.5, 1.0,
+                0.5, 0.5, 0.5, 1.0,
+                0.5, 0.5, 0.5, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            righteye1VertexColorBuffer.itemSize = 4;
+            righteye1VertexColorBuffer.numItems = 4;
+
+            eye2VertexPositionBuffer= gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, eye2VertexPositionBuffer);
+            var vertices = [
+                0.1, 0.1, 0.02,
+                -0.1, 0.1, 0.02,
+                0.1, -0.1, 0.02,
+                -0.1, -0.1, 0.02,
+
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            eye2VertexPositionBuffer.itemSize = 3;
+            eye2VertexPositionBuffer.numItems = 4;
+
+            eye2VertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, eye2VertexColorBuffer);
+            var colors = [
+                1.0, 1.0, 1.0, 1.0,
+                1.0, 1.0, 1.0, 1.0,
+                1.0, 1.0, 1.0, 1.0,
+                1.0, 1.0, 1.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            eye2VertexColorBuffer.itemSize = 4;
+            eye2VertexColorBuffer.numItems = 4;
+
+            eye3VertexPositionBuffer= gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, eye3VertexPositionBuffer);
+            var vertices = [
+                0.06, 0.06, 0.023,
+                -0.06, 0.06, 0.023,
+                0.06, -0.06, 0.023,
+                -0.06, -0.06, 0.023,
+
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            eye3VertexPositionBuffer.itemSize = 3;
+            eye3VertexPositionBuffer.numItems = 4;
+
+            eye3VertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, eye3VertexColorBuffer);
+            var colors = [
+                0.0, 0.0, 0.0, 1.0,
+                0.0, 0.0, 0.0, 1.0,
+                0.0, 0.0, 0.0, 1.0,
+                0.0, 0.0, 0.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            eye3VertexColorBuffer.itemSize = 4;
+            eye3VertexColorBuffer.numItems = 4;
+
+            eye4VertexPositionBuffer= gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, eye4VertexPositionBuffer);
+            var vertices = [
+                0.05, 0.05, 0.023,
+                -0.05, 0.05, 0.023,
+                0.05, -0.05, 0.023,
+                -0.05, -0.05, 0.023,
+
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            eye4VertexPositionBuffer.itemSize = 3;
+            eye4VertexPositionBuffer.numItems = 4;
+
+            eye4VertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, eye4VertexColorBuffer);
+            var colors = [
+                0.0, 0.0, 0.0, 1.0,
+                0.0, 0.0, 0.0, 1.0,
+                0.0, 0.0, 0.0, 1.0,
+                0.0, 0.0, 0.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            eye4VertexColorBuffer.itemSize = 4;
+            eye4VertexColorBuffer.numItems = 4;
+
+            eye5VertexPositionBuffer= gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, eye5VertexPositionBuffer);
+            var vertices = [
+                0.05, 0.05, 0.023,
+                -0.05, 0.05, 0.023,
+                0.05, -0.05, 0.023,
+                -0.05, -0.05, 0.023,
+
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            eye5VertexPositionBuffer.itemSize = 3;
+            eye5VertexPositionBuffer.numItems = 4;
+
+            eye5VertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, eye5VertexColorBuffer);
+            var colors = [
+                0.0, 0.0, 0.0, 1.0,
+                0.0, 0.0, 0.0, 1.0,
+                0.0, 0.0, 0.0, 1.0,
+                0.0, 0.0, 0.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            eye5VertexColorBuffer.itemSize = 4;
+            eye5VertexColorBuffer.numItems = 4;
+
+            lip1VertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, lip1VertexPositionBuffer);
+            var vertices = [
+                0.14, 0.05, 0.02,
+                -0.14, 0.05, 0.02,
+                0.14, -0.05, 0.02,
+                -0.14, -0.05, 0.02,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            lip1VertexPositionBuffer.itemSize = 3;
+            lip1VertexPositionBuffer.numItems = 4;
+
+            lip1VertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, lip1VertexColorBuffer);
+            var colors = [
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            lip1VertexColorBuffer.itemSize = 4;
+            lip1VertexColorBuffer.numItems = 4;
+
+            lip2VertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, lip2VertexPositionBuffer);
+            var vertices = [
+                0.3, 0.05, 0.02,
+                -0.3, 0.05, 0.02,
+                0.3, -0.05, 0.02,
+                -0.3, -0.05, 0.02,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            lip2VertexPositionBuffer.itemSize = 3;
+            lip2VertexPositionBuffer.numItems = 4;
+
+            lip2VertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, lip2VertexColorBuffer);
+            var colors = [
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+                1.0, 0.0, 0.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            lip2VertexColorBuffer.itemSize = 4;
+            lip2VertexColorBuffer.numItems = 4;
+
+            nose2VertexPositionBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, nose2VertexPositionBuffer);
+            var vertices = [
+                0.05, 0.134, 0.02,
+                -0.05, 0.134, 0.02,
+                0.05, -0.134, 0.02,
+                -0.05, -0.134, 0.02,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            nose2VertexPositionBuffer.itemSize = 3;
+            nose2VertexPositionBuffer.numItems = 4;
+
+            nose2VertexColorBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, nose2VertexColorBuffer);
+            var colors = [
+                0.0, 0.0, 0.0, 1.0,
+                0.0, 0.0, 0.0, 1.0,
+                0.0, 0.0, 0.0, 1.0,
+                0.0, 0.0, 0.0, 1.0,
+            ];
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+            nose2VertexColorBuffer.itemSize = 4;
+            nose2VertexColorBuffer.numItems = 4;
+
+
+
+
+
+
+
+
+
+
+
+
+        }
+
+
+        var rTri = 0;
+        var rleftline = 0;
+        var rrightline = 0;
+        var rlefthand = 0;
+        var rrighthand = 0;
+        var rhalfrighthand = 0;
+        var rtop = 1.56;
+        var rhead = -6;
+        var rlegleft = -0.41;
+        var rlegright = 0.41;
+        var rbagstrap1 =0;
+        var rbagstrap2 =0.5;
+        var rlid =0;
+        var rleftear =-0.5;
+        var rrightear =0.5;
+        var rshoe1 =-0.44;
+        var rshoe2 =0.39;
+        var rheart =1.0;
+        var rbody =-6;
+        var rleftfoot =-8.0;
+        var rrightfoot =-6.5;
+        var rleftarm =-5.6;
+        var rrightarm =-5.4;
+        var rrightsupport =-5.38;
+        var rleftsupport =-6.38;
+        var rshoe3 =-6.47;
+        var rshoe4 =-5.47;
+        var rnose =-5.79;
+        var rhair1 =-6.45;
+        var rhair2 =-6.36;
+        var rhair3 =-6.27;
+        var rhair4 =-6.2;
+        var rlefteye1 =0.25;
+        var rrighteye1 =-0.25;
+        var reye2 =-5.8;
+        var reye3 =-5.8;
+        var reye4 =0.25;
+        var reye5 =-0.25;
+        var rlip1 =-5.8;
+        var rlip2 =0;
+        var rnose2 =0;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        function drawScene() {
+            gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+            mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
+
+            mat4.identity(mvMatrix);
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rTri),[0,0,0]);
+            mat4.translate(mvMatrix, [rTri, 0.0, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, triangleVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, triangleVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLES, 0, triangleVertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rleftline),[0,0,0]);
+            mat4.translate(mvMatrix, [rleftline, 0.0, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, leftLineVertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, leftLineVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, leftlineVertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, leftlineVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.LINES, 0, leftLineVertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rrightline),[0,0,0]);
+            mat4.translate(mvMatrix, [rrightline, 0.0, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, rightlineVertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, rightlineVertexPositionBuffer .itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, rightlineVertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, rightlineVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.LINES, 0, rightlineVertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rlefthand),[0,0,0]);
+            mat4.translate(mvMatrix, [rlefthand, 0.0, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, lefthandVertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, lefthandVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, lefthandVertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, lefthandVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.LINES, 0, lefthandVertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rrighthand),[0,0,0]);
+            mat4.translate(mvMatrix, [rrighthand, 0.0, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, righthandVertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, righthandVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, righthandVertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, righthandVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.LINES, 0, righthandVertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rhalfrighthand),[0,0,0]);
+            mat4.translate(mvMatrix, [rhalfrighthand, 0.0, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, halfrighthandVertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, halfrighthandVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, halfrighthandVertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, halfrighthandVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.LINES, 0, halfrighthandVertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rtop),[0,0,0]);
+            mat4.translate(mvMatrix, [rtop ,-1.0, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, topVertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, topVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, topVertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, topVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, topVertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rhead),[0,0,0]);
+            mat4.translate(mvMatrix, [rhead, 1.8, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, headVertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, headVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, headVertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, headVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLE_FAN, 0, headVertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rlegleft),[0,0,0]);
+            mat4.translate(mvMatrix, [rlegleft, -2.0, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, legleftVertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, legleftVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, legleftVertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, legleftVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLES, 0, legleftVertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rlegright),[0,0,0]);
+            mat4.translate(mvMatrix, [rlegright, -2.0, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, legrightVertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, legrightVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, legrightVertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, legrightVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLES, 0, legrightVertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rbagstrap1),[0,0,0]);
+            mat4.translate(mvMatrix, [rbagstrap1, 0.0, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, bagstrap1VertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, bagstrap1VertexPositionBuffer .itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, bagstrap1VertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, bagstrap1VertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.LINES, 0, bagstrap1VertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rbagstrap2),[0,0,0]);
+            mat4.translate(mvMatrix, [rbagstrap2, 0.0, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, bagstrap2VertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, bagstrap2VertexPositionBuffer .itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, bagstrap2VertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, bagstrap2VertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.LINES, 0, bagstrap2VertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rlid),[0,0,0]);
+            mat4.translate(mvMatrix, [rlid ,1.5, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, lidVertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, lidVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, lidVertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, lidVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, lidVertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rleftear),[0,0,0]);
+            mat4.translate(mvMatrix, [rleftear ,1.5, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, leftearVertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, leftearVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, leftearVertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, leftearVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, leftearVertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rrightear),[0,0,0]);
+            mat4.translate(mvMatrix, [rrightear ,1.5, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, rightearVertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, rightearVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, rightearVertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, rightearVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, rightearVertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rshoe1),[0,0,0]);
+            mat4.translate(mvMatrix, [rshoe1, -2.17, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, shoe1VertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, shoe1VertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, shoe1VertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, shoe1VertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLES, 0, shoe1VertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rshoe2),[0,0,0]);
+            mat4.translate(mvMatrix, [rshoe2, -2.17, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, shoe2VertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, shoe2VertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, shoe2VertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, shoe2VertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLES, 0, shoe2VertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rheart),[0,0,0]);
+            mat4.translate(mvMatrix, [-2.0, rheart, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, heartVertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, heartVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, heartVertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, heartVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLE_FAN, 0, heartVertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rbody),[0,0,0]);
+            mat4.translate(mvMatrix, [rbody ,-0.28, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, bodyVertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, bodyVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, bodyVertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, bodyVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, bodyVertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rleftfoot),[0,0,0]);
+            mat4.translate(mvMatrix, [rleftfoot, -2.1, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, leftfootVertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, leftfootVertexPositionBuffer .itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, leftfootVertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, leftfootVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.LINES, 0, leftfootVertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rrightfoot),[0,0,0]);
+            mat4.translate(mvMatrix, [rrightfoot, -1.1, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, rightfootVertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, rightfootVertexPositionBuffer .itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, rightfootVertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, rightfootVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.LINES, 0, rightfootVertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rleftarm),[0,0,0]);
+            mat4.translate(mvMatrix, [rleftarm, -0.7, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, leftarmVertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, leftarmVertexPositionBuffer .itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, leftarmVertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, leftarmVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.LINES, 0, leftarmVertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rrightarm),[0,0,0]);
+            mat4.translate(mvMatrix, [rrightarm, -0.1, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, rightarmVertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, rightarmVertexPositionBuffer .itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, rightarmVertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, rightarmVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.LINES, 0, rightarmVertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rrightsupport),[0,0,0]);
+            mat4.translate(mvMatrix, [rrightsupport ,-2.4, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, rightsupportVertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, rightsupportVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, rightsupportVertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, rightsupportVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, rightsupportVertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rleftsupport),[0,0,0]);
+            mat4.translate(mvMatrix, [rleftsupport ,-2.4, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, leftsupportVertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, leftsupportVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, leftsupportVertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, leftsupportVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, leftsupportVertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rnose),[0,0,0]);
+            mat4.translate(mvMatrix, [rnose ,1.2, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, noseVertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, noseVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, noseVertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, noseVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLES, 0, noseVertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rhair1),[0,0,0]);
+            mat4.translate(mvMatrix, [rhair1 ,1.3, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, hair1VertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, hair1VertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, hair1VertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, hair1VertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.LINES, 0, hair1VertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rshoe3),[0,0,0]);
+            mat4.translate(mvMatrix, [rshoe3, -2.48, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, shoe3VertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, shoe3VertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, shoe3VertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, shoe3VertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, shoe3VertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rshoe4),[0,0,0]);
+            mat4.translate(mvMatrix, [rshoe4, -2.48, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, shoe4VertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, shoe4VertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, shoe4VertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, shoe4VertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, shoe4VertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rhair2),[0,0,0]);
+            mat4.translate(mvMatrix, [rhair2 ,1.2, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, hair2VertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, hair2VertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, hair2VertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, hair2VertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.LINES, 0, hair2VertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rhair3),[0,0,0]);
+            mat4.translate(mvMatrix, [rhair3 ,1.1, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, hair3VertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, hair3VertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, hair3VertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, hair3VertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.LINES, 0, hair3VertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rhair4),[0,0,0]);
+            mat4.translate(mvMatrix, [rhair4 ,1.0, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, hair4VertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, hair4VertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, hair4VertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, hair4VertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.LINES, 0, hair4VertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rlefteye1),[0,0,0]);
+            mat4.translate(mvMatrix, [rlefteye1 ,1.7, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, lefteye1VertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, lefteye1VertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, lefteye1VertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, lefteye1VertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, lefteye1VertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rrighteye1),[0,0,0]);
+            mat4.translate(mvMatrix, [rrighteye1 ,1.7, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, righteye1VertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, righteye1VertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, righteye1VertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, righteye1VertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, righteye1VertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(reye2),[0,0,0]);
+            mat4.translate(mvMatrix, [reye2 ,1.5, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, eye2VertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, eye2VertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, eye2VertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, eye2VertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, eye2VertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(reye3),[0,0,0]);
+            mat4.translate(mvMatrix, [reye3 ,1.5, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, eye3VertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, eye3VertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, eye3VertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, eye3VertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, eye3VertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(reye4),[0,0,0]);
+            mat4.translate(mvMatrix, [reye4 ,1.7, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, eye4VertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, eye4VertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, eye4VertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, eye4VertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, eye4VertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(reye5),[0,0,0]);
+            mat4.translate(mvMatrix, [reye5 ,1.7, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, eye5VertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, eye5VertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, eye5VertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, eye5VertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, eye5VertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rlip1),[0,0,0]);
+            mat4.translate(mvMatrix, [rlip1, 0.9, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, lip1VertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, lip1VertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, lip1VertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, lip1VertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, lip1VertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rlip2),[0,0,0]);
+            mat4.translate(mvMatrix, [rlip2, 1.2, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, lip2VertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, lip2VertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, lip2VertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, lip2VertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, lip2VertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+            mvPushMatrix();
+            mat4.rotate(mvMatrix, degToRad(rnose2),[0,0,0]);
+            mat4.translate(mvMatrix, [rnose2 ,1.48, -7.0]);
+            gl.bindBuffer(gl.ARRAY_BUFFER, nose2VertexPositionBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, nose2VertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, nose2VertexColorBuffer);
+            gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, nose2VertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+            setMatrixUniforms();
+            gl.drawArrays(gl.TRIANGLES, 0, nose2VertexPositionBuffer.numItems);
+            mvPopMatrix();
+
+
+
+
+
+
+
+
+
+        }
+
+
+        var lastTime = 0;
+
+        function animate() {
+            var timeNow = new Date().getTime();
+            if (lastTime != 0) {
+                var elapsed = timeNow - lastTime;
+
+                rTri += (1 * elapsed) / 1000.0;
+                rleftline += (1 * elapsed) / 1000.0;
+                rrightline += (1 * elapsed) / 1000.0;
+                rlefthand += (1 * elapsed) / 1000.0;
+                rrighthand += (1 * elapsed) / 1000.0;
+                rhalfrighthand += (1 * elapsed) / 1000.0;
+                rtop += (1 * elapsed) / 1000.0;
+                rhead += (1 * elapsed) / 1000.0;
+                rlegleft += (1*elapsed) /1000.0;
+                rlegright += (1*elapsed) /1000.0;
+                rbagstrap1 += (1*elapsed) /1000.0;
+                rbagstrap2 += (1*elapsed) /1000.0;
+                rlid += (1 * elapsed) / 1000.0;
+                rleftear += (1 * elapsed) / 1000.0;
+                rrightear += (1 * elapsed) / 1000.0;
+                rshoe1 += (1 * elapsed) / 1000.0;
+                rshoe2 += (1 * elapsed) / 1000.0;
+                rheart += (1 * elapsed) / 1000.0;
+                rbody += (1 * elapsed) / 1000.0;
+                rleftfoot += (1 * elapsed) / 1000.0;
+                rrightfoot += (1 * elapsed) / 1000.0;
+                rleftarm += (1 * elapsed) / 1000.0;
+                rrightarm += (1 * elapsed) / 1000.0;
+                rrightsupport += (1 * elapsed) / 1000.0;
+                rleftsupport += (1 * elapsed) / 1000.0;
+                rnose += (1 * elapsed) / 1000.0;
+                rhair1 += (1 * elapsed) / 1000.0;
+                rshoe3 += (1 * elapsed) / 1000.0;
+                rshoe4 += (1 * elapsed) / 1000.0;
+                rhair2 += (1 * elapsed) / 1000.0;
+                rhair3 += (1 * elapsed) / 1000.0;
+                rhair4 += (1 * elapsed) / 1000.0;
+                rlefteye1 += (1 * elapsed) / 1000.0;
+                rrighteye1 += (1 * elapsed) / 1000.0;
+                reye2 += (1 * elapsed) / 1000.0;
+                reye3 += (1 * elapsed) / 1000.0;
+                reye4 += (1 * elapsed) / 1000.0;
+                reye5 += (1 * elapsed) / 1000.0;
+                rlip1 += (1 * elapsed) / 1000.0;
+                rlip2 += (1 * elapsed) / 1000.0;
+                rnose2 += (1 * elapsed) / 1000.0;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            }
+
+
+                lastTime = timeNow;
+        }
+
+
+        function tick() {
+            requestAnimationFrame(tick);
+            drawScene();
+            animate();
+        }
+
+
+        function webGLStart() {
+            var canvas = document.getElementById("lesson03-canvas");
+            initGL(canvas);
+            initShaders();
+            initBuffers();
+
+            gl.clearColor(0.5, 0.5, 0.5, 1.0);
+            gl.enable(gl.DEPTH_TEST);
+
+            tick();
+        }
+
+    </script>
+
+</head>
+
+
+<body onload="webGLStart();">
+<div class="container">
+    <div class="row">
+        <div class="col-12 mt-2">
+
+            <canvas id="lesson03-canvas" style="border: #0c5460;" width="1000" height="600"></canvas>
+        </div>
+        <div class="col-12">
+            <br>
+            <h3>
+                for documentation lesson 3 : a bit of movement <a href="../docs/Lesson_3.docx">here</a> to
+                download
+            </h3>
+        </div>
+    </div>
+</div>
+</body>
+
+</html>
