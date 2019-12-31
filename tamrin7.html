@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Texture</title>
+    <style>
+
+        body {
+        @include display(flex);
+        @include align-content(center);
+            color: #353535;
+            min-height: 100vh;
+            font-family: 'Open Sans', sans-serif;
+            font-size: 4px;
+            text-align: center;
+            background-color: lightgreen;
+            margin: 0 auto;
+            overflow: hidden;
+
+        }
+
+        #web-gl {
+            height: 100%;
+            width: 100%;
+        }
+
+    </style>
+
+
+    <script type="text/javascript" src="lib/three.js"></script>
+    <script type="text/javascript" src="lib/OrbitControls.js"></script>
+    <script type="text/javascript" src="lib/HDRCubeTextureLoader.js"></script>
+    <script type="text/javascript" src="lib/OBJLoader.js"></script>
+    <script type="text/javascript" src="lib/Tween.js"></script>
+    <script type="text/javascript" src="lib/LegacyJSONLoader.js"></script>
+    <script type="text/javascript" src="lib/GLTFLoader.js"></script>
+
+
+    <script src="lib/DDSLoader.js"></script>
+    <script src="lib/MTLLoader.js"></script>
+    <script src="lib/OBJLoader.js"></script>
+
+
+</head>
+<body>
+
+<div id="web-gl">
+</div>
+</div>
+<script id="scriptScene0" type="text/javascript">
+
+
+
+
+    var width = window.innerWidth;
+    var height = window.innerHeight;
+    var camera, renderer, scene;
+    var planeFight = new THREE.Mesh(), spotLight;
+    var controls;
+    var gltfloader3;
+    var tween;
+    var willy;
+    var target = {x: 100, y: 100, z: 100};
+
+    init();
+    animate();
+
+
+    function init() {
+
+        scene = new THREE.Scene();
+
+        camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+        scene.fog = new THREE.FogExp2(0xFFFFFF, 0.0014);
+        renderer = new THREE.WebGLRenderer({antialias: true});
+        renderer.setClearColor(new THREE.Color(0x000000));
+        renderer.setSize(width, height);
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.25;
+        controls.enableZoom = false;
+        camera.position.x = 0;
+        camera.position.y = 120;
+        camera.position.z = 280;
+        camera.lookAt(scene.position);
+        document.getElementById("web-gl").appendChild(renderer.domElement);
+        window.addEventListener('keyup', onDocumentKeyUp, false);
+        var spotLight = new THREE.SpotLight(0xffffff);
+        spotLight.angle = 0.7;
+        spotLight.penumbra = 0.3;
+
+        var skyBoxGeometry = new THREE.CubeGeometry(1000, 1000, 1000);
+        var loader = new THREE.TextureLoader();
+        var texture = loader.load('texture/images/skyNight.jpg');
+        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(1, 1);
+        texture.anisotropy = 56;
+        var skyBoxMaterial = new THREE.MeshStandardMaterial({map:texture, side: THREE.BackSide});
+        var skyBox = new THREE.Mesh(skyBoxGeometry, skyBoxMaterial);
+        scene.add(skyBox);
+
+
+
+
+        var texture = new THREE.TextureLoader().load('texture/water.png');
+        texture.repeat.set(2, 1);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.magFilter = THREE.NearestFilter;
+        texture.minFilter = THREE.LinearMipMapLinearFilter;
+        var surface = new THREE.PlaneGeometry(1300, 1350);
+        var surfaceMaterial = new THREE.MeshStandardMaterial({color: 0xcccccc, side: THREE.DoubleSide, map: texture});
+        var surfaceMesh = new THREE.Mesh(surface, surfaceMaterial);
+        surfaceMesh.rotateX(Math.PI / 2);
+        surfaceMesh.position.y = -50;
+        surfaceMesh.position.z = -500;
+        surfaceMesh.position.x = -10;
+        scene.add(surfaceMesh);
+
+
+        var texture2 = new THREE.TextureLoader().load('texture/untitled20.png');
+        texture2.repeat.set(8, 8);
+        texture2.wrapS = THREE.RepeatWrapping;
+        texture2.wrapT = THREE.RepeatWrapping;
+        texture2.magFilter = THREE.NearestFilter;
+        texture2.minFilter = THREE.LinearMipMapLinearFilter;
+        var surface2 = new THREE.PlaneGeometry(1300, 1350);
+        var surfaceMaterial2 = new THREE.MeshStandardMaterial({color: 0xcccccc, side: THREE.DoubleSide, map: texture2});
+        var surfaceMesh2 = new THREE.Mesh(surface2, surfaceMaterial2);
+        surfaceMesh2.rotateX(Math.PI / 2);
+        surfaceMesh2.position.y = -45;
+        surfaceMesh2.position.z = -1200;
+        surfaceMesh2.position.x = -10;
+        scene.add(surfaceMesh2);
+
+
+
+
+
+        var textureBox = new THREE.TextureLoader().load('texture/untitled20.png');
+        textureBox.repeat.set(10, 10);
+        textureBox.wrapS = THREE.RepeatWrapping;
+        textureBox.wrapT = THREE.RepeatWrapping;
+        textureBox.magFilter = THREE.LinearFilter;
+        textureBox.minFilter = THREE.LinearFilter;
+        var boxGeometry = new THREE.BoxGeometry(3, 5, 1350);
+        var boxMaterial = new THREE.MeshStandardMaterial({color: 0xcccccc, side: THREE.DoubleSide, map: textureBox});
+        box = new THREE.Mesh(boxGeometry, boxMaterial);
+        box.position.y = -48;
+        box.position.z = -300;
+        box.position.x = -10.5;
+        scene.add(box);
+
+
+
+
+
+
+
+
+        var objectloader4 = new THREE.ObjectLoader();
+        objectloader4.load("model/plane-fight-threejs/plane-fight.json", function (obj) {
+
+            planeFight = obj;
+            planeFight.add(spotLight);
+            planeFight.scale.set(6, 6, 6);
+            planeFight.position.z = -300;
+            planeFight.position.y = 170;
+
+            scene.add(planeFight);
+
+            tween = new TWEEN.Tween(planeFight.position).to(target, 5000);
+            tween.delay(200);
+            tween.easing(TWEEN.Easing.Quartic.InOut);
+        });
+
+
+
+        var ambiColor = "#ffffff";
+        var ambientLight = new THREE.AmbientLight(ambiColor, 1);
+        scene.add(ambientLight);
+
+
+
+
+        gltfloader3 = new THREE.GLTFLoader();
+        gltfloader3.load('model/gltf/willy/scene.gltf', function (gltf) {
+            willy = gltf.scene;
+            willy.children[0].children[0].children[0].children[3].visible = false;
+            willy.scale.set(10,10,10);
+            willy.position.set(0,-45,0);
+            scene.add(willy);
+        });
+
+
+
+
+
+
+
+
+
+
+
+    }
+
+    function animate() {
+
+        renderer.render(scene, camera);
+        TWEEN.update();
+        controls.update();
+        requestAnimationFrame(animate);
+    }
+
+
+    function onDocumentKeyUp(event) {
+
+        if (event.keyCode == 87) {
+
+            tweenPlane();
+            tween.start();
+        }
+    }
+
+    function tweenPlane() {
+
+        target.x = Math.random() * 1400 - 700;
+        target.y = Math.random() * 200 - 48;
+        target.z = Math.random() * 1200 - 900;
+    }
+</script>
+</body>
+</html>
